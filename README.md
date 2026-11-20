@@ -1,5 +1,8 @@
 # Vendor Integration Service
 
+[![CI](https://github.com/roytomas/vendor-integration-service/actions/workflows/ci.yml/badge.svg)](https://github.com/roytomas/vendor-integration-service/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/roytomas/vendor-integration-service/actions/workflows/codeql.yml/badge.svg)](https://github.com/roytomas/vendor-integration-service/actions/workflows/codeql.yml)
+
 A standalone, **reactive** Spring Boot (WebFlux) service that integrates with a
 third-party vendor system: it pulls vendor records through a resilient HTTP
 client, maps them onto our own domain model, persists them, and exposes a
@@ -134,3 +137,21 @@ mvn test
 - `VendorIntegrationServiceTest` - unit tests (Mockito) for the sync/upsert orchestration, including persistence-failure isolation.
 - `VendorControllerTest` - `@WebFluxTest` slice test for the REST endpoints.
 - `VendorApiClientResilienceTest` - exercises the real Resilience4j-proxied `VendorApiClient` against a WireMock stub, proving retries, timeout-triggered fallback, and circuit breaker recovery all work end-to-end (not just that the annotations are present).
+
+## CI/CD
+
+Two GitHub Actions workflows run on every push/PR to `main` (`.github/workflows/`):
+
+- **`ci.yml`**
+  1. Builds and runs the full test suite on JDK 21 (`mvn verify`), including JaCoCo coverage (`target/site/jacoco`).
+  2. Publishes test results inline on the PR and uploads the coverage report as a build artifact.
+  3. Runs Checkstyle (`google_checks.xml`) and SpotBugs as non-blocking checks - findings are uploaded as artifacts (`target/checkstyle-result.xml`, `target/spotbugsXml.xml`) without failing the build, since the codebase doesn't have a clean baseline yet. Tighten (`failOnViolation`/`failOnError`) once it does.
+  4. Packages the Spring Boot JAR and uploads it as a build artifact.
+  5. On pushes to `main` only, builds the `Dockerfile` image and pushes it to `ghcr.io/roytomas/vendor-integration-service` tagged `latest` and with the commit SHA.
+- **`codeql.yml`** - weekly + on push/PR, static security analysis (CodeQL) for Java, with results in the repo's Security tab.
+
+**`dependabot.yml`** opens weekly PRs for outdated Maven dependencies (Spring Boot patches grouped together) and GitHub Actions versions.
+
+Branch protection on `main` requires the `build-and-test` check to pass and a pull request before merging.
+
+No cloud deployment step exists yet. The pipeline publishes a container image to GHCR as the hand-off point for a future CD workflow (e.g. deploying that image to Azure Container Apps).
