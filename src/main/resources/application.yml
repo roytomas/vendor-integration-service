@@ -33,11 +33,35 @@ management:
       enabled: true
       ratelimiters:
         enabled: true
+  metrics:
+    tags:
+      service: ${spring.application.name}
+      env: ${DD_ENV:dev}
+      version: ${DD_VERSION:unknown}
+  # Ships app/JVM metrics to the Datadog Agent's DogStatsD listener.
+  # Disabled by default (DD_METRICS_ENABLED=false) so the service keeps
+  # running out of the box with no external dependencies; set
+  # DD_METRICS_ENABLED=true (and point DD_AGENT_HOST at a reachable agent)
+  # to enable it - see docker-compose.yml for a local example.
+  statsd:
+    metrics:
+      export:
+        enabled: ${DD_METRICS_ENABLED:false}
+        flavor: datadog
+        host: ${DD_AGENT_HOST:localhost}
+        port: ${DD_DOGSTATSD_PORT:8125}
+        step: 10s
 
 logging:
   level:
     com.vendor.integration: INFO
     io.github.resilience4j: INFO
+  # Injects the Datadog APM trace/span ids (populated by dd-java-agent via
+  # MDC when DD_LOGS_INJECTION=true) into every log line for trace-log
+  # correlation in the Datadog UI. Resolves to empty tags when the agent
+  # isn't attached (e.g. local `mvn spring-boot:run`).
+  pattern:
+    level: "%5p [%X{dd.service:-},%X{dd.trace_id:-},%X{dd.span_id:-}]"
 
 # --- Vendor integration configuration ---
 vendor:

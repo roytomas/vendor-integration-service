@@ -1,0 +1,34 @@
+# Local observability stack: the service plus a real Datadog Agent, so APM
+# traces, DogStatsD metrics, and trace-correlated logs can be exercised
+# end-to-end without a Kubernetes DaemonSet. See README.md#observability.
+#
+# Usage:
+#   DD_API_KEY=<your-api-key> docker compose up --build
+services:
+  datadog-agent:
+    image: gcr.io/datadoghq/agent:7
+    environment:
+      DD_API_KEY: ${DD_API_KEY:?set DD_API_KEY to a real Datadog API key}
+      DD_SITE: ${DD_SITE:-datadoghq.com}
+      DD_APM_ENABLED: "true"
+      DD_APM_NON_LOCAL_TRAFFIC: "true"
+      DD_DOGSTATSD_NON_LOCAL_TRAFFIC: "true"
+      DD_LOGS_ENABLED: "true"
+    ports:
+      - "8126:8126" # APM trace intake
+      - "8125:8125/udp" # DogStatsD metrics
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      DD_AGENT_HOST: datadog-agent
+      DD_ENV: ${DD_ENV:-dev}
+      DD_METRICS_ENABLED: "true"
+    depends_on:
+      - datadog-agent

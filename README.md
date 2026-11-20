@@ -127,6 +127,61 @@ All resilience behaviour is externalized in `application.yml` under
 tunables (retry attempts/backoff, circuit breaker thresholds, rate limiter
 throughput, connect/response timeouts).
 
+## Observability (Datadog)
+
+The service ships with [dd-trace-java](https://github.com/DataDog/dd-trace-java)
+and Micrometer/DogStatsD wired in, all configured through environment
+variables so the image works standalone (no Datadog Agent reachable) and
+"just works" once one is:
+
+- **APM distributed tracing** - `dd-java-agent.jar` is baked into the Docker
+  image and always attached (`-javaagent:/app/dd-java-agent.jar`). It
+  auto-instruments WebFlux, WebClient, R2DBC and Kafka. If no agent is
+  reachable at `DD_AGENT_HOST`, trace export is simply a no-op.
+- **Metrics** - app/JVM metrics (HTTP, R2DBC pool, Kafka consumer,
+  Resilience4j circuit breakers/retries/rate limiters) are pushed to the
+  Datadog Agent's DogStatsD listener via Micrometer
+  (`management.statsd.metrics.export.*` in `application.yml`, flavor
+  `datadog`). Disabled by default (`DD_METRICS_ENABLED=false`) to keep the
+  service dependency-free out of the box; set `DD_METRICS_ENABLED=true` once
+  an agent is reachable.
+- **Log-trace correlation** - `DD_LOGS_INJECTION=true` (the Docker image
+  default) makes the tracer populate `dd.trace_id`/`dd.span_id` via MDC;
+  `logging.pattern.level` in `application.yml` renders them into every log
+  line so logs and traces correlate in the Datadog UI.
+- **Local testing** - `docker-compose.yml` runs the service alongside a real
+  Datadog Agent container:
+
+  ```bash
+  DD_API_KEY=<your-api-key> docker compose up --build
+  ```
+
+### Key environment variables
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `DD_AGENT_HOST` | `localhost` | Host/service name of the Datadog Agent (APM + DogStatsD) |
+| `DD_TRACE_AGENT_PORT` | `8126` | Agent APM trace intake port |
+| `DD_DOGSTATSD_PORT` | `8125` | Agent DogStatsD port |
+| `DD_METRICS_ENABLED` | `false` | Enables the Micrometer → DogStatsD metrics export |
+| `DD_SERVICE` / `DD_ENV` / `DD_VERSION` | `vendor-integration-service` / `dev` / `0.0.1-SNAPSHOT` | Unified service tagging across traces, metrics and logs |
+| `DD_LOGS_INJECTION` | `true` | Injects `dd.trace_id`/`dd.span_id` into logs for correlation |
+| `DD_RUNTIME_METRICS_ENABLED` | `true` | JVM runtime metrics (GC, heap, threads) via the tracer |
+
+### Kubernetes DaemonSet deployments
+
+This repo has no Kubernetes manifests yet, but when deploying behind a
+DaemonSet-mode Datadog Agent (one per node), point `DD_AGENT_HOST` at the
+node's IP via the downward API rather than a fixed hostname:
+
+```yaml
+env:
+  - name: DD_AGENT_HOST
+    valueFrom:
+      fieldRef:
+        fieldPath: status.hostIP
+```
+
 ## Testing
 
 ```bash
