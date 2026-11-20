@@ -5,10 +5,10 @@ import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.kafka.core.reactive.ReactiveKafkaConsumerTemplate;
 import org.springframework.stereotype.Component;
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
+import reactor.kafka.receiver.KafkaReceiver;
 import reactor.kafka.receiver.ReceiverRecord;
 import reactor.util.retry.Retry;
 
@@ -30,20 +30,20 @@ public class OrderEventConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(OrderEventConsumer.class);
 
-    private final ReactiveKafkaConsumerTemplate<String, OrderEvent> consumerTemplate;
+    private final KafkaReceiver<String, OrderEvent> kafkaReceiver;
     private final OrderEventService orderEventService;
 
     private Disposable subscription;
 
-    public OrderEventConsumer(ReactiveKafkaConsumerTemplate<String, OrderEvent> consumerTemplate,
+    public OrderEventConsumer(KafkaReceiver<String, OrderEvent> kafkaReceiver,
                                OrderEventService orderEventService) {
-        this.consumerTemplate = consumerTemplate;
+        this.kafkaReceiver = kafkaReceiver;
         this.orderEventService = orderEventService;
     }
 
     @PostConstruct
     public void start() {
-        subscription = consumerTemplate.receive()
+        subscription = kafkaReceiver.receive()
                 .concatMap(this::process)
                 .retryWhen(Retry.backoff(Long.MAX_VALUE, Duration.ofSeconds(1))
                         .maxBackoff(Duration.ofSeconds(30))
