@@ -4,6 +4,7 @@ import com.vendor.integration.service.VendorIntegrationService;
 import com.vendor.integration.web.dto.SyncResultDTO;
 import com.vendor.integration.web.dto.VendorResponseDTO;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,6 +31,16 @@ public class VendorController {
     @GetMapping
     public Flux<VendorResponseDTO> getAllVendors() {
         return vendorIntegrationService.getAllVendors();
+    }
+
+    /**
+     * Returns a single vendor's details by its business {@code vendorId}
+     * (e.g. {@code VEND-001}), responding 404 if no such vendor is
+     * persisted.
+     */
+    @GetMapping("/{vendorId}")
+    public Mono<VendorResponseDTO> getVendorById(@PathVariable String vendorId) {
+        return vendorIntegrationService.getVendorById(vendorId);
     }
 
     /**

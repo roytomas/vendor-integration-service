@@ -4,9 +4,9 @@ import com.vendor.integration.client.VendorApiClient;
 import com.vendor.integration.client.dto.VendorApiResponse;
 import com.vendor.integration.domain.Vendor;
 import com.vendor.integration.domain.VendorStatus;
+import com.vendor.integration.exception.VendorNotFoundException;
 import com.vendor.integration.mapper.VendorMapper;
 import com.vendor.integration.repository.VendorRepository;
-import com.vendor.integration.web.dto.SyncResultDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -110,5 +110,29 @@ class VendorIntegrationServiceTest {
         StepVerifier.create(service.getAllVendors())
                 .expectNextMatches(dto -> dto.vendorId().equals("VEND-001") && dto.name().equals("Acme"))
                 .verifyComplete();
+    }
+
+    @Test
+    void getVendorByIdReturnsMappedVendorWhenPresent() {
+        Vendor vendor = new Vendor();
+        vendor.setId(1L);
+        vendor.setVendorId("VEND-001");
+        vendor.setName("Acme");
+        vendor.setStatus(VendorStatus.ACTIVE);
+
+        when(vendorRepository.findByVendorId("VEND-001")).thenReturn(Mono.just(vendor));
+
+        StepVerifier.create(service.getVendorById("VEND-001"))
+                .expectNextMatches(dto -> dto.vendorId().equals("VEND-001") && dto.name().equals("Acme"))
+                .verifyComplete();
+    }
+
+    @Test
+    void getVendorByIdErrorsWhenNotFound() {
+        when(vendorRepository.findByVendorId("VEND-404")).thenReturn(Mono.empty());
+
+        StepVerifier.create(service.getVendorById("VEND-404"))
+                .expectError(VendorNotFoundException.class)
+                .verify();
     }
 }
