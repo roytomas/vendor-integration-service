@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # Maven dependencies (Spring Boot, Resilience4j, Kafka, test libs, etc.)
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      spring-boot:
+        patterns:
+          - 'org.springframework.boot:*'
+
+  # GitHub Actions used by the CI/CodeQL workflows
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

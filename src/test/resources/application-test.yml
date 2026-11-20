@@ -6,8 +6,14 @@ vendor:
   sync:
     enabled: false
   api:
-    connect-timeout-millis: 300
-    response-timeout-millis: 300
+    # Comfortably below the 2s delay stubbed by
+    # VendorApiClientResilienceTest#timesOutOnSlowVendorAndFallsBackToEmpty
+    # (so that test still exercises a real timeout), but high enough that an
+    # immediately-responding WireMock stub doesn't spuriously trip the
+    # timeout under CI runner CPU/scheduling jitter (observed flakiness in
+    # recoversAfterTransientFailuresThenSuccess at 300ms on shared runners).
+    connect-timeout-millis: 1000
+    response-timeout-millis: 1000
 
 order:
   kafka:
