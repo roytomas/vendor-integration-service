@@ -3,6 +3,7 @@ package com.vendor.integration.service;
 import com.vendor.integration.client.VendorApiClient;
 import com.vendor.integration.client.dto.VendorApiResponse;
 import com.vendor.integration.domain.Vendor;
+import com.vendor.integration.exception.VendorNotFoundException;
 import com.vendor.integration.mapper.VendorMapper;
 import com.vendor.integration.repository.VendorRepository;
 import com.vendor.integration.web.dto.SyncResultDTO;
@@ -83,5 +84,15 @@ public class VendorIntegrationService {
     public Flux<VendorResponseDTO> getAllVendors() {
         return vendorRepository.findAll()
                 .map(vendorMapper::toResponseDTO);
+    }
+
+    /**
+     * Returns a single vendor by its business {@code vendorId}, or errors
+     * with {@link VendorNotFoundException} if no such vendor is persisted.
+     */
+    public Mono<VendorResponseDTO> getVendorById(String vendorId) {
+        return vendorRepository.findByVendorId(vendorId)
+                .map(vendorMapper::toResponseDTO)
+                .switchIfEmpty(Mono.error(new VendorNotFoundException(vendorId)));
     }
 }

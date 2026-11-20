@@ -34,6 +34,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_GATEWAY, ex.getMessage(), exchange);
     }
 
+    @ExceptionHandler(VendorNotFoundException.class)
+    public Mono<ResponseEntity<ErrorResponse>> handleVendorNotFound(VendorNotFoundException ex, ServerWebExchange exchange) {
+        log.warn("Vendor not found: {}", ex.getMessage());
+        return build(HttpStatus.NOT_FOUND, ex.getMessage(), exchange);
+    }
+
     @ExceptionHandler(CallNotPermittedException.class)
     public Mono<ResponseEntity<ErrorResponse>> handleCircuitOpen(CallNotPermittedException ex, ServerWebExchange exchange) {
         log.warn("Circuit breaker open: {}", ex.getMessage());

@@ -65,7 +65,7 @@ external dependencies.
    - **Circuit breaker**: `@CircuitBreaker` stops calling a consistently-failing vendor and recovers automatically.
    - **Rate limiting**: `@RateLimiter` caps the outbound call rate to the vendor.
    - **Error handling**: a central `GlobalExceptionHandler` maps vendor/resilience failures to clear HTTP statuses (502/503/504/429) instead of leaking internals.
-5. **Reactive REST endpoint** - `GET /api/vendors` returns all persisted vendor details as a `Flux<VendorResponseDTO>`.
+5. **Reactive REST endpoint** - `GET /api/vendors` returns all persisted vendor details as a `Flux<VendorResponseDTO>`; `GET /api/vendors/{vendorId}` returns a single vendor (404 if not found).
 6. **Reactive Spring Boot framework** - built entirely on Spring WebFlux + Spring Data R2DBC (no blocking servlet/JPA stack anywhere in the request path).
 
 ## Running
@@ -87,6 +87,7 @@ minutes thereafter) to keep the database in sync; disable it with
 | Method | Path | Description |
 |---|---|---|
 | GET | `/api/vendors` | All vendor details currently persisted in the database (reactive stream) |
+| GET | `/api/vendors/{vendorId}` | A single vendor's details by its business `vendorId` (e.g. `VEND-001`); 404 if not found |
 | POST | `/api/vendors/sync` | Triggers an on-demand sync from the vendor system into the database |
 | GET | `/mock-vendor/vendors` | The built-in mock vendor API. Supports `?delayMs=` and `?failureRate=` to simulate a slow/unreliable vendor and exercise timeout/retry/circuit-breaker behaviour |
 | GET | `/actuator/health` | Health, including circuit breaker / rate limiter state |
@@ -96,6 +97,7 @@ Example:
 ```bash
 curl -X POST http://localhost:8080/api/vendors/sync
 curl http://localhost:8080/api/vendors
+curl http://localhost:8080/api/vendors/VEND-001
 
 # simulate a flaky vendor and watch retries/circuit breaker kick in via logs/actuator
 curl "http://localhost:8080/mock-vendor/vendors?failureRate=0.7"

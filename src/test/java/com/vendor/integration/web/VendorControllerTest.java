@@ -1,6 +1,7 @@
 package com.vendor.integration.web;
 
 import com.vendor.integration.domain.VendorStatus;
+import com.vendor.integration.exception.VendorNotFoundException;
 import com.vendor.integration.service.VendorIntegrationService;
 import com.vendor.integration.web.dto.SyncResultDTO;
 import com.vendor.integration.web.dto.VendorResponseDTO;
@@ -51,5 +52,30 @@ class VendorControllerTest {
                 .expectStatus().isOk()
                 .expectBody(SyncResultDTO.class)
                 .isEqualTo(new SyncResultDTO(3, "COMPLETED"));
+    }
+
+    @Test
+    void getVendorByIdReturnsVendorWhenFound() {
+        VendorResponseDTO dto = new VendorResponseDTO(
+                1L, "VEND-001", "Acme", "a@acme.com", "+1-000", "Addr",
+                VendorStatus.ACTIVE, Instant.parse("2025-01-01T00:00:00Z"));
+
+        when(vendorIntegrationService.getVendorById("VEND-001")).thenReturn(Mono.just(dto));
+
+        webTestClient.get().uri("/api/vendors/VEND-001")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(VendorResponseDTO.class)
+                .isEqualTo(dto);
+    }
+
+    @Test
+    void getVendorByIdReturns404WhenNotFound() {
+        when(vendorIntegrationService.getVendorById("VEND-404"))
+                .thenReturn(Mono.error(new VendorNotFoundException("VEND-404")));
+
+        webTestClient.get().uri("/api/vendors/VEND-404")
+                .exchange()
+                .expectStatus().isNotFound();
     }
 }
