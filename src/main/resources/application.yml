@@ -1,0 +1,97 @@
+spring:
+  application:
+    name: vendor-integration-service
+
+  r2dbc:
+    url: r2dbc:h2:mem:///vendordb;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      auto-offset-reset: earliest
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,circuitbreakers,ratelimiters,retries
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+      ratelimiters:
+        enabled: true
+
+logging:
+  level:
+    com.vendor.integration: INFO
+    io.github.resilience4j: INFO
+
+# --- Vendor integration configuration ---
+vendor:
+  api:
+    # Points at this same app's mock vendor endpoint by default so the
+    # service is runnable out of the box. Repoint at the real vendor host
+    # in production, e.g. https://api.realvendor.example.com
+    base-url: http://localhost:${server.port}/mock-vendor
+    api-key: ${VENDOR_API_KEY:}
+    connect-timeout-millis: 2000
+    response-timeout-millis: 3000
+  sync:
+    enabled: true
+    initial-delay-millis: 5000
+    fixed-delay-millis: 300000 # 5 minutes
+
+# --- Order event Kafka consumer ---
+order:
+  kafka:
+    consumer:
+      enabled: true
+      topic: order-events
+      group-id: vendor-integration-service-order-events
+
+# --- Resilience4j: timeout, retry, circuit breaker, rate limiting ---
+resilience4j:
+  retry:
+    instances:
+      vendorApi:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - com.vendor.integration.exception.VendorApiException
+        ignore-exceptions:
+          - io.github.resilience4j.circuitbreaker.CallNotPermittedException
+          - io.github.resilience4j.ratelimiter.RequestNotPermitted
+
+  circuitbreaker:
+    instances:
+      vendorApi:
+        register-health-indicator: true
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+
+  ratelimiter:
+    instances:
+      vendorApi:
+        limit-for-period: 10
+        limit-refresh-period: 1s
+        timeout-duration: 0s

@@ -1,0 +1,34 @@
+spring:
+  r2dbc:
+    url: r2dbc:h2:mem:///vendortestdb;DB_CLOSE_DELAY=-1
+
+vendor:
+  sync:
+    enabled: false
+  api:
+    connect-timeout-millis: 300
+    response-timeout-millis: 300
+
+order:
+  kafka:
+    consumer:
+      enabled: false
+
+resilience4j:
+  retry:
+    instances:
+      vendorApi:
+        max-attempts: 3
+        wait-duration: 50ms
+        enable-exponential-backoff: false
+  circuitbreaker:
+    instances:
+      vendorApi:
+        sliding-window-size: 10
+        minimum-number-of-calls: 10
+  ratelimiter:
+    instances:
+      vendorApi:
+        limit-for-period: 1000
+        limit-refresh-period: 1s
+        timeout-duration: 0s
